@@ -1,0 +1,54 @@
+.dashboard-container {
+  max-width: 600px;
+  margin: auto;
+  padding: 1rem;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+form input, form button {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  border: 1px solid #ddd;
+  padding: 0.8rem;
+  margin-bottom: 0.5rem;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+li button {
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 500px) {
+  .dashboard-container {
+    padding: 0.5rem;
+  }
+
+  form input, form button {
+    font-size: 0.9rem;
+    padding: 0.4rem;
+  }
+
+  li {
+    font-size: 0.9rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+}
