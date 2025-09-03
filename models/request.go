@@ -10,4 +10,6 @@ type CreateProductRequest struct {
 	Description string  `json:"description" binding:"required"`
 	Price       float64 `json:"price" binding:"required,gt=0"`
 	Stock       int     `json:"stock" binding:"required,gte=0"`
+	Category    string  `json:"category" binding:"required,gte=0"`
+	ImageUrl    string  `json:"image_url"`
 }

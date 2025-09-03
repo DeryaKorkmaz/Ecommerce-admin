@@ -3,6 +3,7 @@ package main
 import (
 	"ecommerce-admin/db"
 	"ecommerce-admin/handlers"
+	"ecommerce-admin/handlers/storage"
 	"ecommerce-admin/middleware"
 	"time"
 
@@ -22,6 +23,11 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	// MinIO client
+	minioClient := storage.NewMinIO("localhost:9100", "minioadmin", "minioadmin", "product-images", false)
+	// Upload handler
+	uploadHandler := handlers.NewUploadHandler(minioClient)
+
 	// veritabanı bağlantısı
 	db.Init()
 
@@ -36,6 +42,8 @@ func main() {
 		protected.POST("/products", handlers.CreateProduct)
 		protected.PUT("/products/:id", handlers.UpdateProduct)
 		protected.DELETE("/products/:id", handlers.DeleteProduct)
+		protected.POST("/uploadimage", uploadHandler.Upload)
+
 	}
 
 	r.Run(":8080")

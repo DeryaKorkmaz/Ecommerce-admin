@@ -16,14 +16,13 @@ func GetProducts(c *gin.Context) {
 	var products []models.Product
 	query := db.DB.Model(&products)
 
+	if search != "" {
+		query = query.Where("name ILIKE ?", "%"+search+"%")
+	}
 
-    if search != "" {
-        query = query.Where("name ILIKE ?", "%"+search+"%")
-    }
-
-    if category != "" {
-        query = query.Where("category = ?", category)
-    }
+	if category != "" {
+		query = query.Where("category = ?", category)
+	}
 
 	if stock == "in" {
 		query = query.Where("stock > 0")
@@ -31,10 +30,10 @@ func GetProducts(c *gin.Context) {
 		query = query.Where("stock = 0")
 	}
 
-    if err := query.Find(&products).Error; err != nil {
-        c.JSON(500, gin.H{"error": err.Error()})
-        return
-    }
+	if err := query.Find(&products).Error; err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 	//db.DB.Find(&products)
 	c.JSON(http.StatusOK, products)
 }
@@ -51,15 +50,17 @@ func CreateProduct(c *gin.Context) {
 	product := models.Product{
 		Name:        req.Name,
 		Description: req.Description,
-		Price:       int(req.Price),
+		Price:       int64(req.Price),
 		Stock:       req.Stock,
+		Category:    req.Category,
+		ImageUrl:    req.ImageUrl,
 	}
 	//db.DB.Create(&req)
 	if err := db.DB.Create(&product).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create product"})
 		return
 	}
-	c.JSON(http.StatusCreated, req)
+	c.JSON(http.StatusCreated, product.ID)
 }
 
 func UpdateProduct(c *gin.Context) {
@@ -70,11 +71,30 @@ func UpdateProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 		return
 	}
-
-	if err := c.ShouldBindJSON(&product); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var input models.Product
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
+
+	product.Name = input.Name
+	product.Description = input.Description
+	product.Stock = input.Stock
+	product.Category = input.Category
+	product.Price = input.Price
+	if input.ImageUrl != "" {
+		product.ImageUrl = input.ImageUrl
+	}
+
+	if err := db.DB.Save(&product).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update product"})
+		return
+	}
+
+	// if err := c.ShouldBindJSON(&product); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
 	db.DB.Save(&product)
 	c.JSON(http.StatusOK, product)
