@@ -29,6 +29,9 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload"; // Yükleme ikonu 
+import { styled } from '@mui/material/styles';
+
 
 function Dashboard() {
   const [products, setProducts] = useState([]);
@@ -39,7 +42,21 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState(""); // arama input
   const [categoryFilter, setCategoryFilter] = useState(""); 
   const [stockFilter, setStockFilter] = useState("");
+ const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFileName, setSelectedFileName] = useState(null);
 
+  // Dosya yükleme butonu için stilize edilmiş bileşen
+  const VisuallyHiddenInput = styled('input')({
+    clip: 'rect(0 0 0 0)',
+    clipPath: 'inset(50%)',
+    height: 1,
+    overflow: 'hidden',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    whiteSpace: 'nowrap',
+    width: 1,
+  });
 
  // const navigate = useNavigate();
 
@@ -119,26 +136,76 @@ function Dashboard() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = async () => {
-    const url = editingId
-      ? `${process.env.REACT_APP_API_URL}/products/${editingId}`
-      : `${process.env.REACT_APP_API_URL}/products`;
-    const method = editingId ? "PUT" : "POST";
 
-    try {
+  //Dosya seçimi için. Sadece dosyayı state'e kaydediyoruz
+const handleFileChange = (e) => {
+    const file = e.target.files && e.target.files[0]; // Sadece ilk dosyayı al
+    if (file) {
+      setSelectedFile(file); // File objesini state'e kaydet
+      setSelectedFileName(file.name); // Dosya adını sakla
+    } else {
+      setSelectedFile(null); // Dosya seçimi iptal edilirse null yap
+      setSelectedFileName(""); // Dosya adını temizle
+    }
+  };
+
+    
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch(`${process.env.REACT_APP_API_URL}/uploadimage`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      throw new Error("Image upload failed");
+    }
+
+    const data = await res.json();
+    return data.url; // be'den gelen resim URL'si
+  };
+
+  const handleSubmit = async () => {
+       
+ try {
+      let imageUrl = form.image_url || "";
+
+      // önce resmi yükle
+      if (selectedFile) {
+        imageUrl = await uploadImage(selectedFile);
+      }
+
+      const url = editingId
+        ? `${process.env.REACT_APP_API_URL}/products/${editingId}`
+        : `${process.env.REACT_APP_API_URL}/products`;
+      const method = editingId ? "PUT" : "POST";
+
       const res = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...form, price: parseFloat(form.price), stock: parseInt(form.stock) }),
+        body: JSON.stringify({ 
+          ...form, 
+          price: parseFloat(form.price), 
+          stock: parseInt(form.stock), 
+          image_url: imageUrl,
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        setForm({ name: "", price: "", description: "", stock: "", category: "" });
+        setSnackbar({
+        open: true,
+        message: editingId ? "Product updated successfully!" : "Product created successfully!",
+        severity: "success",
+      });
+        setForm({ name: "", price: "", description: "", stock: "", category: "", image_url:"" });
         setEditingId(null);
         fetchProducts();
         setError("");
@@ -162,8 +229,24 @@ function Dashboard() {
       price: product.price,
       description: product.description,
       stock: product.stock,
+      category: product.category || ""
     });
+    setSelectedFile(null); // Düzenleme yaparken dosyayı sıfırla
+    setSelectedFileName(""); 
     setEditingId(product.id);
+
+   // Scroll to the form
+  const formCard = document.querySelector('#product-form-card');
+  if (formCard) {
+    formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Highlight effect
+    formCard.style.transition = 'background-color 0.5s';
+    formCard.style.backgroundColor = '#cacac5ff'; 
+    setTimeout(() => {
+      formCard.style.backgroundColor = ''; 
+    }, 1000);
+    }
   };
 
   const handleDelete = async (id) => {
@@ -215,7 +298,7 @@ return (
       <Container>
 
         {/* Product Form Card */}
-        <Card sx={{ mb: 4 }}>
+        <Card sx={{ mb: 4 }} id="product-form-card">
           <CardHeader title={editingId ? "Edit Product" : "Add Product"} />
           <Divider />
           <CardContent>
@@ -230,6 +313,39 @@ return (
                 <TextField label="Description" name="description" value={form.description} onChange={handleChange} fullWidth />
                 <TextField label="Stock" name="stock" type="number" value={form.stock} onChange={handleChange} fullWidth />
                 <TextField label="Category" name="category" value={form.category} onChange={handleChange} fullWidth />
+                  {/* Image Upload Input */}
+                  <Button
+                    component="label"
+                    variant="contained"
+                    startIcon={<CloudUploadIcon />}
+                    sx={{
+                      px: 5,
+                      py: 1,
+                      borderRadius: 2,
+                      textTransform: "none",
+                      fontWeight: "bold",
+                      alignSelf: "flex-start",
+                      width: "auto",
+                      backgroundColor: "#4caf50", 
+                      '&:hover': {
+                        backgroundColor: "#388e3c",
+                      },
+                    }}
+                  >
+                    <span>{selectedFileName ? selectedFileName : "Upload Image"}</span>
+                    {/* DEĞİŞİKLİK: onChange event'ini yeni handleFileChange fonksiyonuna bağladık */}
+                    <VisuallyHiddenInput type="file" onChange={handleFileChange} />
+                  </Button>
+                  {selectedFile && (
+                      <Box sx={{ mt: 2 }}>
+                        <Typography variant="body2">Selected Image:</Typography>
+                        <img
+                          src={URL.createObjectURL(selectedFile)}
+                          alt="preview"
+                          style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8 }}
+                        />
+                      </Box>
+                    )}
                 <Button variant="contained" color={editingId ? "warning" : "primary"} size="small"
                   sx={{
                     px: 5,
@@ -298,6 +414,7 @@ return (
               <Table>
                 <TableHead>
                   <TableRow>
+                    <TableCell><strong>Image</strong></TableCell> {/* Yeni sütun */}
                     <TableCell><strong>Name</strong></TableCell>
                     <TableCell><strong>Price (₺)</strong></TableCell>
                     <TableCell><strong>Description</strong></TableCell>
@@ -309,6 +426,11 @@ return (
                 <TableBody>
                   {products.map((product) => (
                     <TableRow key={product.id} hover>
+                        <TableCell>
+                          {product.image_url ? (
+                            <img src={product.image_url} alt={product.name} style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8, transition: "transform 0.2s"}} onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.5)")}
+                              onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}  />) : <span>No Image</span>}
+                        </TableCell>
                       <TableCell>{product.name}</TableCell>
                       <TableCell>{product.price.toLocaleString()}</TableCell>
                       <TableCell>{product.description}</TableCell>
