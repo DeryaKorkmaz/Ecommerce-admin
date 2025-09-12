@@ -21,11 +21,11 @@ and oversee overall inventory in a user-friendly interface.
 
 The following steps for the compilation of the project
 
-** Minio Up **
+**Minio Up**
   sudo docker run -p 9100:9000 -p 9101:9090   -e "MINIO_ROOT_USER=miniouser"   -e "MINIO_ROOT_PASSWORD=miniopassword"   quay.io/minio/minio server /data --console-address ":9090"
 
-** Go build **
+**Go build**
   go run ./main.go
 
-** FE **
+**FE**
   npm start
