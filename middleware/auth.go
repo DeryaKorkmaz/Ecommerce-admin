@@ -30,7 +30,16 @@ func AuthRequired() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			c.Set("user", claims)
+			if userID, ok := claims["user_id"].(float64); ok {
+				c.Set("user_id", int64(userID))
+			}
+		} else {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+			c.Abort()
+			return
+		}
 		c.Next()
 	}
 }
