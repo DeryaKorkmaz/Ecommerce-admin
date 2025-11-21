@@ -13,6 +13,12 @@ func GetProducts(c *gin.Context) {
 	category := c.Query("category")
 	stock := c.Query("stock")
 
+	userID, exists := c.MustGet("user_id").(int64)
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User does not exists"})
+		return
+	}
+
 	var products []models.Product
 	query := db.DB.Model(&products)
 
@@ -30,11 +36,11 @@ func GetProducts(c *gin.Context) {
 		query = query.Where("stock = 0")
 	}
 
-	if err := query.Find(&products).Error; err != nil {
+	if err := query.Where("user_id = ?", userID).Find(&products).Error; err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	//db.DB.Find(&products)
+
 	c.JSON(http.StatusOK, products)
 }
 
@@ -47,6 +53,12 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
+	userID, exists := c.MustGet("user_id").(int64)
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User does not exists"})
+		return
+	}
+
 	product := models.Product{
 		Name:        req.Name,
 		Description: req.Description,
@@ -54,6 +66,7 @@ func CreateProduct(c *gin.Context) {
 		Stock:       req.Stock,
 		Category:    req.Category,
 		ImageUrl:    req.ImageUrl,
+		UserID:      userID,
 	}
 	//db.DB.Create(&req)
 	if err := db.DB.Create(&product).Error; err != nil {
