@@ -1,466 +1,103 @@
-import { useEffect, useState } from "react";
-//import { useNavigate } from "react-router-dom";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Container,
-  Box,
-  Stack,
-  TextField,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Snackbar,
-  MenuItem,
-  IconButton, 
-  Tooltip,
-  Card,
-  CardContent,
-  CardHeader,
-  Divider
-  //Chip
-} from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload"; // Yükleme ikonu 
-import { styled } from '@mui/material/styles';
+import React from 'react';
+import { Card, CardContent, Typography } from '@mui/material';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import PeopleIcon from '@mui/icons-material/People';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
-
-function Dashboard() {
-  const [products, setProducts] = useState([]);
-  const [form, setForm] = useState({ name: "", price: "", description: "", stock: "", category: ""});
-  const [editingId, setEditingId] = useState(null);
-  const [error, setError] = useState("");
-  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
-  const [searchTerm, setSearchTerm] = useState(""); // arama input
-  const [categoryFilter, setCategoryFilter] = useState(""); 
-  const [stockFilter, setStockFilter] = useState("");
- const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedFileName, setSelectedFileName] = useState(null);
-
-  // Dosya yükleme butonu için stilize edilmiş bileşen
-  const VisuallyHiddenInput = styled('input')({
-    clip: 'rect(0 0 0 0)',
-    clipPath: 'inset(50%)',
-    height: 1,
-    overflow: 'hidden',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    whiteSpace: 'nowrap',
-    width: 1,
-  });
-
- // const navigate = useNavigate();
-
-  const token = localStorage.getItem("token");
-
-  const fetchProducts = async () => {
-    try {
-
-      const params = new URLSearchParams();
-      if (searchTerm) params.append("search", searchTerm);
-      if (categoryFilter) params.append("category", categoryFilter);
-      if (stockFilter) params.append("stock", stockFilter);
-        
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/products?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        setSnackbar({ open: true, message: "Session expired. Redirecting to login...", severity: "error" });
-         window.location.href = "/login"
-       // navigate("/login", { replace: true });
-        return;
-      }
-
-      const data = await res.json();
-      if (res.ok) {
-        setProducts(data);
-        setError("");
-      } else {
-        setError(data.error || "Failed to fetch");
-      }
-    } catch (err) {
-      setError("Network error: " + err.message);
-    }
-  };
-
-  // useEffect(() => {
-  //   if (!token) {
-  //       window.location.href = "/login"
-  //     //navigate("/login", { replace: true });
-  //   } else {
-  //     fetchProducts();
-  //   }
-  // }, [token]);
-
-   useEffect(() => {
-    if (token) {
-      fetchProducts();
-    }
-  }, [token, searchTerm, categoryFilter, stockFilter]);
-
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-      setSnackbar({
-      open: true,
-      message: "Logging out...",
-      severity: "success",
-    });
-
-  };
-
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false });
-
-    // Eğer logout snackbar ise yönlendirme yap
-    if (snackbar.message === "Logging out...") {
-      window.location.href = "/login";
-    }
-    if (snackbar.message === "Session expired. Redirecting to login...") {
-      window.location.href = "/login";
-    }
-  };
-
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-
-  //Dosya seçimi için. Sadece dosyayı state'e kaydediyoruz
-const handleFileChange = (e) => {
-    const file = e.target.files && e.target.files[0]; // Sadece ilk dosyayı al
-    if (file) {
-      setSelectedFile(file); // File objesini state'e kaydet
-      setSelectedFileName(file.name); // Dosya adını sakla
-    } else {
-      setSelectedFile(null); // Dosya seçimi iptal edilirse null yap
-      setSelectedFileName(""); // Dosya adını temizle
-    }
-  };
-
-    
-  const uploadImage = async (file) => {
-    const formData = new FormData();
-    formData.append("file", file);
-
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/uploadimage`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      throw new Error("Image upload failed");
-    }
-
-    const data = await res.json();
-    return data.url; // be'den gelen resim URL'si
-  };
-
-  const handleSubmit = async () => {
-       
- try {
-      let imageUrl = form.image_url || "";
-
-      // önce resmi yükle
-      if (selectedFile) {
-        imageUrl = await uploadImage(selectedFile);
-      }
-
-      const url = editingId
-        ? `${process.env.REACT_APP_API_URL}/products/${editingId}`
-        : `${process.env.REACT_APP_API_URL}/products`;
-      const method = editingId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ 
-          ...form, 
-          price: parseFloat(form.price), 
-          stock: parseInt(form.stock), 
-          image_url: imageUrl,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setSnackbar({
-        open: true,
-        message: editingId ? "Product updated successfully!" : "Product created successfully!",
-        severity: "success",
-      });
-        setForm({ name: "", price: "", description: "", stock: "", category: "", image_url:"" });
-        setEditingId(null);
-        fetchProducts();
-        setError("");
-      } else {
-        if (res.status === 401) {
-          localStorage.removeItem("token");
-           window.location.href = "/login"
-        //  navigate("/login", { replace: true });
-        } else {
-          setError(data.error || "Failed to save product");
-        }
-      }
-    } catch (err) {
-      setError("Network error: " + err.message);
-    }
-  };
-
-  const handleEdit = (product) => {
-    setForm({
-      name: product.name,
-      price: product.price,
-      description: product.description,
-      stock: product.stock,
-      category: product.category || ""
-    });
-    setSelectedFile(null); // Düzenleme yaparken dosyayı sıfırla
-    setSelectedFileName(""); 
-    setEditingId(product.id);
-
-   // Scroll to the form
-  const formCard = document.querySelector('#product-form-card');
-  if (formCard) {
-    formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    // Highlight effect
-    formCard.style.transition = 'background-color 0.5s';
-    formCard.style.backgroundColor = '#cacac5ff'; 
-    setTimeout(() => {
-      formCard.style.backgroundColor = ''; 
-    }, 1000);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    const confirm = window.confirm("Are you sure?");
-    if (!confirm) return;
-
-    const res = await fetch(`${process.env.REACT_APP_API_URL}/products/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (res.ok) {
-      fetchProducts();
-    }
-  };
-
-    const categories = [...new Set(products.map(product => product.category).filter(Boolean))];
-
-
-return (
-  <>
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          Dashboard
+const StatCard = ({ title, value, icon, color }) => (
+  <Card className="shadow-sm hover:shadow-md transition-shadow">
+    <CardContent className="flex items-center justify-between p-6">
+      <div>
+        <Typography color="textSecondary" gutterBottom variant="body2" className="uppercase font-medium tracking-wider">
+          {title}
         </Typography>
-        <Button variant="contained" color="error" onClick={handleLogout}>
-          Logout
-        </Button>
-      </Toolbar>
-    </AppBar>
-
-    <Snackbar
-      open={snackbar.open}
-      autoHideDuration={1000}
-      onClose={handleCloseSnackbar}
-      anchorOrigin={{ vertical: "top", horizontal: "center" }}
-    >
-      <Alert
-        onClose={handleCloseSnackbar}
-        severity={snackbar.severity}
-        sx={{ width: "100%", backgroundColor: "#a4ad98ff" }}
-      >
-        {snackbar.message}
-      </Alert>
-    </Snackbar>
-
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5ff", py: 4 }}>
-      <Container>
-
-        {/* Product Form Card */}
-        <Card sx={{ mb: 4 }} id="product-form-card">
-          <CardHeader title={editingId ? "Edit Product" : "Add Product"} />
-          <Divider />
-          <CardContent>
-            <Box
-              component="form"
-              noValidate
-              autoComplete="off"
-            >
-              <Stack spacing={2}>
-                <TextField label="Name" name="name" value={form.name} onChange={handleChange} fullWidth />
-                <TextField label="Price (₺)" name="price" type="number" value={form.price} onChange={handleChange} fullWidth />
-                <TextField label="Description" name="description" value={form.description} onChange={handleChange} fullWidth />
-                <TextField label="Stock" name="stock" type="number" value={form.stock} onChange={handleChange} fullWidth />
-                <TextField label="Category" name="category" value={form.category} onChange={handleChange} fullWidth />
-                  {/* Image Upload Input */}
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{
-                      px: 5,
-                      py: 1,
-                      borderRadius: 2,
-                      textTransform: "none",
-                      fontWeight: "bold",
-                      alignSelf: "flex-start",
-                      width: "auto",
-                      backgroundColor: "#4caf50", 
-                      '&:hover': {
-                        backgroundColor: "#388e3c",
-                      },
-                    }}
-                  >
-                    <span>{selectedFileName ? selectedFileName : "Upload Image"}</span>
-                    {/* DEĞİŞİKLİK: onChange event'ini yeni handleFileChange fonksiyonuna bağladık */}
-                    <VisuallyHiddenInput type="file" onChange={handleFileChange} />
-                  </Button>
-                  {selectedFile && (
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2">Selected Image:</Typography>
-                        <img
-                          src={URL.createObjectURL(selectedFile)}
-                          alt="preview"
-                          style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8 }}
-                        />
-                      </Box>
-                    )}
-                <Button variant="contained" color={editingId ? "warning" : "primary"} size="small"
-                  sx={{
-                    px: 5,
-                    py: 1.,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: "bold",
-                    alignSelf: "flex-start", // Stack içinde sola hizalar
-                    width: "auto",            // tam genişlikten kurtarır
-                  }} onClick={handleSubmit}>
-                  {editingId ? "UPDATE" : "CREATE"}
-                </Button>
-              </Stack>
-            </Box>
-          </CardContent>
-        </Card>
-
-        {/* Filters + Product Table Card */}
-        <Card>
-          <CardHeader title="Product Management" />
-          <Divider />
-          <CardContent>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-            {/* Filters */}
-            <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mb: 2 }}>
-              <TextField
-                label="Search"
-                variant="outlined"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                size="small"
-              />
-              <TextField
-                select
-                label="Category Filter"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                size="small"
-                sx={{ minWidth: 200 }}
-              >
-                <MenuItem value="">All Categories</MenuItem>
-                {categories.map((cat) => (
-                  <MenuItem key={cat} value={cat}>
-                    {cat}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="Stock Filter"
-                value={stockFilter}
-                onChange={(e) => setStockFilter(e.target.value)}
-                size="small"
-                sx={{ minWidth: 150 }}
-              >
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="in">In Stock</MenuItem>
-                <MenuItem value="out">Out of Stock</MenuItem>
-              </TextField>
-            </Box>
-
-            {/* Table */}
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Image</strong></TableCell> {/* Yeni sütun */}
-                    <TableCell><strong>Name</strong></TableCell>
-                    <TableCell><strong>Price (₺)</strong></TableCell>
-                    <TableCell><strong>Description</strong></TableCell>
-                    <TableCell><strong>Stock</strong></TableCell>
-                    <TableCell><strong>Category</strong></TableCell>
-                    <TableCell align="right"><strong>Actions</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id} hover>
-                        <TableCell>
-                          {product.image_url ? (
-                            <img src={product.image_url} alt={product.name} style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 8, transition: "transform 0.2s"}} onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.5)")}
-                              onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}  />) : <span>No Image</span>}
-                        </TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{product.price.toLocaleString()}</TableCell>
-                      <TableCell>{product.description}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell>{product.category}</TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Edit">
-                          <IconButton color="primary" onClick={() => handleEdit(product)}>
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton color="error" onClick={() => handleDelete(product.id)}>
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
-
-      </Container>
-    </Box>
-  </>
+        <Typography variant="h4" className="font-bold text-gray-800">
+          {value}
+        </Typography>
+      </div>
+      <div className={`p-3 rounded-full ${color} text-white`}>
+        {icon}
+      </div>
+    </CardContent>
+  </Card>
 );
 
-}
+const Dashboard = () => {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+        <p className="text-gray-500">Welcome back, here's what's happening with your store today.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Sales"
+          value="₺124,500"
+          icon={<AttachMoneyIcon />}
+          color="bg-green-500"
+        />
+        <StatCard
+          title="Total Orders"
+          value="1,240"
+          icon={<ShoppingBagIcon />}
+          color="bg-blue-500"
+        />
+        <StatCard
+          title="New Customers"
+          value="85"
+          icon={<PeopleIcon />}
+          color="bg-purple-500"
+        />
+        <StatCard
+          title="Growth"
+          value="+12.5%"
+          icon={<TrendingUpIcon />}
+          color="bg-orange-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="shadow-sm">
+          <CardContent>
+            <Typography variant="h6" className="font-bold mb-4">Recent Activity</Typography>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-800">New order #123{i} received</p>
+                    <p className="text-xs text-gray-500">2 minutes ago</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardContent>
+            <Typography variant="h6" className="font-bold mb-4">Top Products</Typography>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">Premium Product {i}</p>
+                      <p className="text-xs text-gray-500">Electronics</p>
+                    </div>
+                  </div>
+                  <span className="font-bold text-gray-700">₺1,200</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
 export default Dashboard;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ecommerce-admin/config"
 	"ecommerce-admin/db"
 	"ecommerce-admin/handlers"
 	"ecommerce-admin/handlers/storage"
@@ -12,10 +13,11 @@ import (
 )
 
 func main() {
+	cfg := config.LoadConfig()
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowOrigins:     cfg.Cors.AllowOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
 		AllowHeaders:     []string{"Authorization", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -24,12 +26,12 @@ func main() {
 	}))
 
 	// MinIO client
-	minioClient := storage.NewMinIO("localhost:9100", "minioadmin", "minioadmin", "product-images", false)
+	minioClient := storage.NewMinIO(cfg.MinIO.Endpoint, cfg.MinIO.AccessKeyID, cfg.MinIO.SecretAccessKey, cfg.MinIO.Bucket, cfg.MinIO.UseSSL)
 	// Upload handler
 	uploadHandler := handlers.NewUploadHandler(minioClient)
 
 	// veritabanı bağlantısı
-	db.Init()
+	db.Init(cfg)
 
 	r.POST("/register", handlers.Register)
 	r.POST("/login", handlers.Login)
@@ -46,5 +48,5 @@ func main() {
 
 	}
 
-	r.Run(":8080")
+	r.Run(cfg.Server.Port)
 }
