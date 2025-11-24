@@ -20,9 +20,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Products from "./pages/Products";
+import Layout from "./components/Layout";
 
 function App() {
-    const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token");
 
   // return (
   //   <Router>
@@ -34,7 +36,7 @@ function App() {
   //   </Router>
   // );
 
-    return (
+  return (
     <Router>
       <Routes>
         <Route
@@ -42,10 +44,15 @@ function App() {
           element={!token ? <Login /> : <Navigate to="/dashboard" />}
         />
         <Route path="/register" element={<Register />} />
-        <Route
-          path="/dashboard"
-          element={token ? <Dashboard /> : <Navigate to="/login" />}
-        />
+
+        <Route element={token ? <Layout /> : <Navigate to="/login" />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          {/* Placeholder routes for now */}
+          <Route path="/customers" element={<div className="p-4">Customers Page (Coming Soon)</div>} />
+          <Route path="/settings" element={<div className="p-4">Settings Page (Coming Soon)</div>} />
+        </Route>
+
         <Route path="*" element={<Navigate to={token ? "/dashboard" : "/login"} />} />
       </Routes>
     </Router>

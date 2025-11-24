@@ -1,6 +1,7 @@
 package db
 
 import (
+	"ecommerce-admin/config"
 	"ecommerce-admin/models"
 	"fmt"
 	"log"
@@ -11,8 +12,15 @@ import (
 
 var DB *gorm.DB
 
-func Init() {
-	dsn := "host=localhost user=admin password=admin123 dbname=ecommerce port=5432 sslmode=disable"
+func Init(cfg *config.Config) {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		cfg.Database.Host,
+		cfg.Database.User,
+		cfg.Database.Password,
+		cfg.Database.DBName,
+		cfg.Database.Port,
+		cfg.Database.SSLMode,
+	)
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
